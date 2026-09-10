@@ -1,0 +1,6 @@
+{
+  "name": "NLP Spam & Deliverability Optimizer",
+  "description": "Production-ready AI/NLP email deliverability and quality optimizer with HTML structural analysis, subject optimization, compliance & authentication diagnostics, and seed testing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
