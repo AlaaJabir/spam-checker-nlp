@@ -37,7 +37,7 @@ apiApp.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // 1. Health check
-apiApp.get('/api/health', (req: Request, res: Response) => {
+apiApp.get(['/api/health', '/health'], (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'Emailin-OPS Deliverability Optimizer',
@@ -47,7 +47,7 @@ apiApp.get('/api/health', (req: Request, res: Response) => {
 });
 
 // 2. POST /api/deliverability/analyze
-apiApp.post('/api/deliverability/analyze', async (req: Request, res: Response) => {
+apiApp.post(['/api/deliverability/analyze', '/deliverability/analyze'], async (req: Request, res: Response) => {
   const startTime = Date.now();
   try {
     const { subject = '', html = '', fromEmail, replyTo, trackingEnabled = true } = req.body;
@@ -104,7 +104,7 @@ apiApp.post('/api/deliverability/analyze', async (req: Request, res: Response) =
 });
 
 // 3. POST /api/deliverability/optimize
-apiApp.post('/api/deliverability/optimize', async (req: Request, res: Response) => {
+apiApp.post(['/api/deliverability/optimize', '/deliverability/optimize'], async (req: Request, res: Response) => {
   const startTime = Date.now();
   try {
     const { subject = '', html = '', fromEmail, replyTo, options } = req.body;
@@ -171,7 +171,7 @@ apiApp.post('/api/deliverability/optimize', async (req: Request, res: Response) 
 });
 
 // 4. POST /api/deliverability/test
-apiApp.post('/api/deliverability/test', async (req: Request, res: Response) => {
+apiApp.post(['/api/deliverability/test', '/deliverability/test'], async (req: Request, res: Response) => {
   try {
     const { subject = '', html = '', providers = [], fromEmail, recipient } = req.body;
     const seedTester = globalDeliverabilityEngine.getSeedTester();
@@ -192,7 +192,7 @@ apiApp.post('/api/deliverability/test', async (req: Request, res: Response) => {
 });
 
 // 5. POST /api/deliverability/optimize-and-test
-apiApp.post('/api/deliverability/optimize-and-test', async (req: Request, res: Response) => {
+apiApp.post(['/api/deliverability/optimize-and-test', '/deliverability/optimize-and-test'], async (req: Request, res: Response) => {
   try {
     const { subject = '', html = '', fromEmail, recipient, providers } = req.body;
 
@@ -212,7 +212,7 @@ apiApp.post('/api/deliverability/optimize-and-test', async (req: Request, res: R
 });
 
 // 6. GET /api/deliverability/providers
-apiApp.get('/api/deliverability/providers', (req: Request, res: Response) => {
+apiApp.get(['/api/deliverability/providers', '/deliverability/providers'], (req: Request, res: Response) => {
   const seedProviders = globalDeliverabilityEngine.getSeedTester().getProviders();
   const mailProvider = (process.env.MAIL_PROVIDER || 'kumomta').toLowerCase();
 
@@ -253,7 +253,7 @@ apiApp.get('/api/deliverability/providers', (req: Request, res: Response) => {
 });
 
 // 7. GET /api/deliverability/scans
-apiApp.get('/api/deliverability/scans', (req: Request, res: Response) => {
+apiApp.get(['/api/deliverability/scans', '/deliverability/scans'], (req: Request, res: Response) => {
   const scans = globalDeliverabilityEngine.getAllScans();
   res.json({ scans });
 });
@@ -286,8 +286,7 @@ const handleOpenTracking = (req: Request, res: Response) => {
   res.send(transparentGif);
 };
 
-apiApp.get('/api/tracking/open/:token', handleOpenTracking);
-apiApp.get('/t/:token', handleOpenTracking);
+apiApp.get(['/api/tracking/open/:token', '/tracking/open/:token', '/t/:token'], handleOpenTracking);
 
 // 9. Click Tracking Redirect: GET /api/tracking/click/:token
 const handleClickTracking = (req: Request, res: Response) => {
@@ -318,18 +317,17 @@ const handleClickTracking = (req: Request, res: Response) => {
   }
 };
 
-apiApp.get('/api/tracking/click/:token', handleClickTracking);
-apiApp.get('/c/:token', handleClickTracking);
+apiApp.get(['/api/tracking/click/:token', '/tracking/click/:token', '/c/:token'], handleClickTracking);
 
 // 10. GET /api/tracking/metrics
-apiApp.get('/api/tracking/metrics', (req: Request, res: Response) => {
+apiApp.get(['/api/tracking/metrics', '/tracking/metrics'], (req: Request, res: Response) => {
   const metrics = globalTrackingEngine.getMetrics();
   const recentEvents = globalTrackingEngine.getRecentEvents(10);
   res.json({ metrics, recentEvents });
 });
 
 // 11. Send Pipeline: POST /api/send
-apiApp.post('/api/send', async (req: Request, res: Response) => {
+apiApp.post(['/api/send', '/send'], async (req: Request, res: Response) => {
   try {
     const {
       subject = '',
@@ -410,6 +408,23 @@ apiApp.post('/api/send', async (req: Request, res: Response) => {
     console.error('Error in send pipeline:', err);
     res.status(500).json({ error: `Send failed: ${err.message}` });
   }
+});
+
+// Fallback 404 JSON handler for API requests
+apiApp.use((req: Request, res: Response) => {
+  res.status(404).json({
+    error: `Route ${req.method} ${req.url} not found.`,
+    matchedPath: req.headers['x-matched-path'] || null,
+  });
+});
+
+// Global error handler: catches any uncaught exception and returns JSON to prevent Lambda crashes
+apiApp.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Unhandled API Server Error:', err);
+  res.status(500).json({
+    error: err?.message || 'Internal Server Error',
+    type: err?.name || 'Error',
+  });
 });
 
 export default apiApp;
